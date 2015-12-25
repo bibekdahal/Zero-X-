@@ -441,6 +441,18 @@ void AddTypeFuncToScope(int Type, string FuncId)
     }
 }
 
+int GetGreaterNumType(int Type1, int Type2)
+{
+    if (Type1==Type2)   return Type1;
+    string tp1 = GetTypeName(Type1);
+    string tp2 = GetTypeName(Type2);
+    if (tp1 == "DOUBLE" || tp2 == "DOUBLE") return GetType("DOUBLE");
+    if (tp1 == "FLOAT" || tp2 == "FLOAT") return GetType("FLOAT");
+    if (tp1 == "INT" || tp2 == "INT") return GetType("INT");
+    return GetType("CHAR");
+}
+
+
 
 
 

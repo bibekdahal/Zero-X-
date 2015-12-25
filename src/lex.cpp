@@ -109,13 +109,14 @@ int GetString()
 int GetCharacter()
 {
     pos++;
-    if (Program[pos]=='\n' || '\'')
+    if (Program[pos]=='\n' || Program[pos]=='\'')
         Error("Expected a character between ' '...\n\t\tin line:\n\t",lineStart, pos-lineStart+1);
     token.Str+=Program[pos];
     pos++;
     if (Program[pos]!='\'')
         Error("Expected ending single quotation mark ' ...\n\t\tin line:\n\t",lineStart, pos-lineStart+1);
     token.Type = CHARACTER;
+    pos++;
     return CHARACTER;
 }
 

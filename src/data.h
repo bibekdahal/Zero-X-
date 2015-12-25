@@ -213,6 +213,8 @@ void AddFuncToScope(string Function);
 void AddOprFuncToScope(string Opr);
 void AddTypeFuncToScope(int Type, string FuncId);
 
+
+int GetGreaterNumType(int Type1, int Type2);
 //*************************************************
 
 

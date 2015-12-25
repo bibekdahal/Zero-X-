@@ -1,8 +1,9 @@
 
-Zero-X++ - 3
+Zero-X++ - 4
 =====================================
 This version of 0x++ contains the stage I & II of parser that can
-parse a valid 0x++ program.
+parse a valid 0x++ program as well as a simple optimizer that perform
+the calculations on numerical constants by the compiler itself
 
 
 -------------------------------------
