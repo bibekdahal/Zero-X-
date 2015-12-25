@@ -13,5 +13,6 @@ string ToStr(double Num);
 string ToStr(int Num);
 string ToStr(long Num);
 double ToNum(string str);
+bool IsStrNum(string str);
 
 #endif // STDINC_H_INCLUDED

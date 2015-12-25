@@ -16,6 +16,7 @@
 #include <string>
 #include <stdlib.h>
 #include <vector>
+#include <map>
 #include <algorithm>
 #include <cmath>
 using namespace std;
@@ -72,6 +73,8 @@ struct FuncInfo
     int Type;
     unsigned long ParamSize;    //The total size of parameters in bytes can be useful
     vector<VarInfo> Params;
+
+    string Id;
 };
 extern int RetType;     // Return type of function we are currently parsing
 
@@ -82,7 +85,7 @@ struct TypeInfo
     unsigned long Size;         //Total size of memebers in bytes
     vector<VarInfo> Members;
 
-    FuncInfo NewFunc; bool New;  //The bools store if the NEW and DELETE functions are defined
+    vector<FuncInfo> NewFuncs;
     FuncInfo DelFunc; bool Del;
 };
 // New scopes are created when valid blocks {...} are created
@@ -122,16 +125,26 @@ struct OprInfo
 
     FuncInfo OprFunc;
     bool Series;
+
+    string Id;
 };
 
 // Check if a type is numerical : numerical types are interchangeable
 bool IsNumber(int Type);
 // Check if two types are equal (or equivalent like different numerical types)
 bool CheckTypes(int Type1, int Type2);
+// Check if Type2 can be assigned to Type1
+bool CheckAssgnTypes(int Type1, int Type2);
+// Check if array types match excluding the first dimension
+bool CheckFuncArrParam(int Type1, int Type2);
 // Check is a type is Pointer Type : pointer types are named by preceding with *'s
 bool IsPointer(int Type);
 // Get type pointed by a pointer type
 int GetPointedType(int Type);
+// Get type pointed by a array type
+int GetArrType(int Type);
+// Get the number of dimensions of array type
+int GetArrayIdCnt(int Type);
 
 // Check if an identifier is valid for variable/function/type name
 bool CheckValidName(string Name);
@@ -149,27 +162,24 @@ string GetVarId(string Name, Scope* scope=CurrentScope);
 bool CheckFunction(string Name);
 // Hey, I think these are simple, so I shall skip commenting these, shall I?
 int GetFuncType(string Name);
-unsigned long GetParamSize(string Function);
+long unsigned GetParamSize(string Function);
 int GetNoOfParam(string Function);
 
 bool CheckParameter(string Function, string Name);
-int GetParamId(string Function, string Param);
-string GetParamName(string Function, int ParamId);
 int GetParamType(string Function, int ParamId);
 int GetParamType(string Function, string Param);
 
 bool CheckType(string Name);
 int GetType(string Type);
 string GetTypeName(int Type);
-unsigned long GetTypeSize(int Type);
+long unsigned GetTypeSize(int Type);
 int GetNoOfMember(int Type);
 
 bool CheckMember(int Type, string Name);
-int GetMemberId(int Type, string Member);
-string GetMemberName(int Type, int MemberId);
-int GetMemberType(int Type, int MemberId);
 int GetMemberType(int Type, string Member);
+int GetMemOffset(int Type, string Member);
 
+string GetOprId(string Name, int LType, int RType, int PD);
 bool CheckOpr(string Name);
 bool CheckUnaryOpr(string Name, bool Pre); //bool Pre means whether it is preunary or postunary
 bool CheckOpr(string Name, int PD);
@@ -184,6 +194,8 @@ void ChangeType(int tp, TypeInfo Type);
 void AddTypeNewFunc(int Type, FuncInfo Func);
 // Add a DELETE function for...
 void AddTypeDelFunc(int Type, FuncInfo Func);
+// Get function id of NEW function containing certain parameter
+string GetNewTypeId(int Type, int ParamTp);
 
 // Yes, understandable, aren't these?
 void AddOpr(OprInfo Opr);
@@ -199,7 +211,7 @@ void ParentScope();
 // since parameters are also handled similar to local variables
 void AddFuncToScope(string Function);
 void AddOprFuncToScope(string Opr);
-void AddTypeFuncToScope(int Type, string Function);
+void AddTypeFuncToScope(int Type, string FuncId);
 
 //*************************************************
 

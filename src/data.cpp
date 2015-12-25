@@ -55,12 +55,38 @@ bool IsNumber(int Type)
 bool CheckTypes(int Type1, int Type2)
 {
     if (Type1==Type2) return true;
+    if (IsPointer(Type1) && IsPointer(Type2)) return CheckTypes(GetPointedType(Type1), GetPointedType(Type2));
     if (IsNumber(Type1) && IsNumber(Type2))
         return true;
     return false;
 }
+bool CheckAssgnTypes(int Type1, int Type2)
+{
+    if (CheckTypes(Type1, Type2)) return true;
+    for (unsigned i=0;i<Types[Type1].NewFuncs.size();i++)
+    {
+        int tp = GetPointedType(Types[Type1].NewFuncs[i].Params[0].Type);
+        if (CheckTypes(tp, Type2))  return true;
+    }
+    return false;
+}
+bool CheckFuncArrParam(int Type1, int Type2)
+{
+    if (GetArrayIdCnt(Type1)!=GetArrayIdCnt(Type2)) return false;
+    string str1 = GetTypeName(Type1);
+    string str2 = GetTypeName(Type2);
+    size_t found1 = str1.find('@', 1);   //Find second occurence of '@'
+    size_t found2 = str2.find('@', 1);
+
+    str1 = str1.substr(found1);
+    str2 = str2.substr(found2);
+    if (str1.substr(found1)==str2.substr(found2))   return true;
+
+    return false;
+}
 bool IsPointer(int Type)
 {
+    if (Type==-1) return false;
     string str = GetTypeName(Type);
     if (str.at(str.length()-1)=='*')    return true;
     return false;
@@ -69,6 +95,34 @@ int GetPointedType(int Type)
 {
     string str = GetTypeName(Type);
     return GetType(str.substr(0,str.length()-1));
+}
+int GetArrType(int Type)
+{
+    string str = GetTypeName(Type);
+    size_t found;
+    found = str.find('@');
+    size_t lf=string::npos;
+    while (found!=string::npos)
+    {
+        lf=found;
+        found = str.find('@', found+1);
+    }
+    if (lf==string::npos)   return -1;
+    return GetType(str.substr(lf+2));
+
+}
+int GetArrayIdCnt(int Type)
+{
+    string str = GetTypeName(Type);
+    size_t found;
+    int cnt=0;
+    found = str.find('@');
+    while (found!=string::npos)
+    {
+        cnt++;
+        found = str.find('@', found+1);
+    }
+    return cnt;
 }
 
 bool CheckVarInScope(string Name, Scope *scope)
@@ -164,23 +218,6 @@ bool CheckParameter(string Function, string Name)
         }
     return false;
 }
-int GetParamId(string Function, string Param)
-{
-    for (unsigned i=0;i<Funcs.size();i++)
-        if (Funcs[i].Name==Function)
-        {
-            for (unsigned j=0;j<Funcs[i].Params.size();j++)
-                if (Funcs[i].Params[j].Name==Param) return j;
-            return -1;
-        }
-    return -1;
-}
-string GetParamName(string Function, int ParamId)
-{
-    for (unsigned i=0;i<Funcs.size();i++)
-        if (Funcs[i].Name==Function)    return Funcs[i].Params[ParamId].Name;
-    return "";
-}
 int GetParamType(string Function, int ParamId)
 {
     for (unsigned i=0;i<Funcs.size();i++)
@@ -235,24 +272,6 @@ bool CheckMember(int Type, string Name)
         if (Types[Type].Members[j].Name==Name) return true;
     return false;
 }
-int GetMemberId(int Type, string Member)
-{
-    if (Type<0 || Type>=(signed)Types.size())return -1;
-    for (int j=0;j<(signed)Types[Type].Members.size();j++)
-        if (Types[Type].Members[j].Name==Member) return j;
-    return -1;
-
-}
-string GetMemberName(int Type, int MemberId)
-{
-    if (Type<0 || Type>=(signed)Types.size())return "";
-    return Types[Type].Members[MemberId].Name;
-}
-int GetMemberType(int Type, int MemberId)
-{
-    if (Type<0 || Type>=(signed)Types.size())return -1;
-    return Types[Type].Members[MemberId].Type;
-}
 int GetMemberType(int Type, string Member)
 {
     if (Type<0 || Type>=(signed)Types.size())return -1;
@@ -260,7 +279,26 @@ int GetMemberType(int Type, string Member)
         if (Types[Type].Members[j].Name==Member) return Types[Type].Members[j].Type;
     return -1;
 }
+int GetMemOffset(int Type, string Member)
+{
+    if (Type<0 || Type>=(signed)Types.size())return -1;
+    int offset=0;
+    for (unsigned j=0;j<Types[Type].Members.size();j++)
+    {
+        if (Types[Type].Members[j].Name==Member) break;
+        offset+= GetTypeSize(Types[Type].Members[j].Type);
+    }
+    return offset;
+}
 
+string GetOprId(string Name, int LType, int RType, int PD)
+{
+    for (unsigned i=0;i<Oprs.size();i++)
+        if (Oprs[i].Name==Name  &&  PD==Oprs[i].Precedence
+            && CheckTypes(Oprs[i].LType,LType) && CheckTypes(Oprs[i].RType,RType))
+            return (Oprs[i].Id=="") ? Name : Oprs[i].Id;
+    return "";
+}
 bool CheckOpr(string Name)
 {
     for (unsigned i=0;i<Oprs.size();i++)
@@ -312,17 +350,29 @@ void ChangeType(int tp, TypeInfo Type)
 }
 void AddTypeNewFunc(int Type, FuncInfo Func)
 {
-    Types[Type].New=true;
-    Types[Type].NewFunc=Func;
+    Types[Type].NewFuncs.push_back(Func);
 }
 void AddTypeDelFunc(int Type, FuncInfo Func)
 {
     Types[Type].Del=true;
     Types[Type].DelFunc=Func;
 }
+string GetNewTypeId(int Type, int ParamTp)
+{
+    for (unsigned i=0;i<Types[Type].NewFuncs.size();i++)
+         if (CheckTypes(Types[Type].NewFuncs[i].Params[0].Type, ParamTp))
+            return Types[Type].NewFuncs[i].Id;
+    return "";
+}
 
 void AddOpr(OprInfo Opr)
 {
+    string id="_";
+    for (unsigned i=0;i<Oprs.size();i++)
+        if (Oprs[i].Name==Opr.Name)
+            id=id+"_";
+    Opr.Id = Opr.Name + id;
+
     Oprs.push_back(Opr);
 }
 void AddFunction(FuncInfo Func)
@@ -370,20 +420,25 @@ void AddOprFuncToScope(string Opr)
                 CurrentScope->Vars.push_back(Oprs[i].OprFunc.Params[j]);
             }
 }
-void AddTypeFuncToScope(int Type, string Function)
+void AddTypeFuncToScope(int Type, string FuncId)
 {
-    if (Function=="NEW")
-        for (unsigned j=0;j<Types[Type].NewFunc.Params.size();j++)
-        {
-            Types[Type].NewFunc.Params[j].Id = CurrentScope->Id + Types[Type].NewFunc.Params[j].Name;
-            CurrentScope->Vars.push_back(Types[Type].NewFunc.Params[j]);
-        }
-    else
+    if (FuncId==GetTypeName(Type)+"_DEL")
         for (unsigned j=0;j<Types[Type].DelFunc.Params.size();j++)
         {
             Types[Type].DelFunc.Params[j].Id = CurrentScope->Id + Types[Type].DelFunc.Params[j].Name;
             CurrentScope->Vars.push_back(Types[Type].DelFunc.Params[j]);
         }
+    else
+    {
+        size_t id = -1;
+        for (unsigned i=0;i<Types[Type].NewFuncs.size();i++)
+            if (Types[Type].NewFuncs[i].Id==FuncId) id = i;
+        for (unsigned j=0;j<Types[Type].NewFuncs[id].Params.size();j++)
+        {
+            Types[Type].NewFuncs[id].Params[j].Id = CurrentScope->Id + Types[Type].NewFuncs[id].Params[j].Name;
+            CurrentScope->Vars.push_back(Types[Type].NewFuncs[id].Params[j]);
+        }
+    }
 }
 
 
@@ -454,4 +509,3 @@ void PrintOutTree(Node * nd, string dash)
     PrintOutTree(nd->Left, dash+"-");
     PrintOutTree(nd->Right, dash+"-");
 }
-

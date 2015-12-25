@@ -24,11 +24,36 @@ void ParseParameters(Node* &nd, string Function, int PId)
     // The node's value is PARAMETER
     CreateTree(nd);
     nd->Value="PARAMETER";
+
     // Parse the expression is node's left child
-    int Type = ParseExpression(nd->Left, 0);
-    // Check if types of parameter and expression match
-    if (!CheckTypes(Type, GetParamType(Function, PId)))
-        Error("Invalid parameter type",Token.LineStart,Token.Pos);
+    int Type;
+    // Arrays on expressions need indices, but not if array needs to be passed as parameter
+    if (GetArrayIdCnt(GetParamType(Function, PId))>0)
+    {
+        // Similar to initial code of ParseVarFactor:
+        if (Token.Type!=IDENTIFIER) Error("Invalid Factor", Token.LineStart, Token.Pos);
+        if (!CheckVar(Token.Str))   Error("Invalid Variable Name", Token.LineStart, Token.Pos);
+
+        CreateTree(nd->Left);
+
+        string var = Token.Str;
+        nd->Left->Value = GetVarId(var);
+        Type = GetVarType(var);
+        nd->Left->Attribs[0]="ARR_PARAM_VAR";
+        nd->Left->Attribs[2]=GetTypeName(Type);
+        NextToken;
+
+        // We also need to check if the dimensions of array types besides the first dimention match
+        if (!CheckFuncArrParam(GetParamType(Function, PId), Type))
+            Error("Invalid parameter type",Token.LineStart,Token.Pos);
+    }
+    else
+    {
+        Type = ParseExpression(nd->Left, 0);
+        // Check if types of parameter and expression match
+        if (!CheckAssgnTypes(GetParamType(Function, PId), Type))
+            Error("Invalid parameter type",Token.LineStart,Token.Pos);
+    }
 
     // DONE for this parameter, check if more parameters exist and if yes, parse another parameter
     if (PId != GetNoOfParam(Function)-1)
@@ -41,17 +66,32 @@ void ParseParameters(Node* &nd, string Function, int PId)
         ParseParameters(nd->Right, Function, PId+1);
     }
 }
+//A function is called
+void ParseCall(Node* &nd)
+{
+    // Node's name is CALL, first attribute is function's name and on its right are parameters
+    CreateTree(nd);
+    nd->Value ="CALL";
+    nd->Attribs[0] = Token.Str;
 
-// We have got a pointer variable, so check if followed by array indices, if yes, parse them
-// a[2][3][b*c-3]
-//         ^^^^^ Each index is a numeric expression
-int ParseArray(Node* &nd, int Type)
+    NextToken;
+    if (Token.Str!="(") Error("Expected parameters list for function: " + Token.Str, Token.LineStart, Token.Pos);
+    NextToken;
+
+    if (GetNoOfParam(nd->Attribs[0])!=0) ParseParameters(nd->Right, nd->Attribs[0],0);
+    if (Token.Str!=")") Error("Expected ending paranthesis: )", Token.LineStart, Token.Pos);
+    NextToken;
+    return;
+}
+
+// An array variable needs to be followed by indices, parse each index
+int ParseArray(Node* &nd, int Type, int id)
 {
     // Check '[' which indicate array index is incoming
-    if (Token.Str=="[")
+    while (Token.Str=="[")
     {
         NextToken;
-        // Node's value is ARRAY with left child the pointer variable ....
+        // Node's value is ARRAY with left child the array variable ....
         Node tmp = *nd;
         CreateTree(nd->Right);
         CreateTree(nd->Left);
@@ -65,11 +105,43 @@ int ParseArray(Node* &nd, int Type)
         if (Token.Str!="]")
             Error("Expected ']'",Token.LineStart, Token.Pos);
         NextToken;
+        id++;
+    }
+
+    if (id!=GetArrayIdCnt(Type))
+        Error("Expected more indices", Token.LineStart, Token.Pos);
+    Type = GetArrType(Type);
+    nd->Attribs[2]=GetTypeName(Type);
+    return Type;
+}
+// We have got a pointer variable, so check if followed by array indices, if yes, parse them
+// a[2][3][b*c-3]
+//         ^^^^^ Each index is a numeric expression
+int ParsePtrArray(Node* &nd, int Type)
+{
+    // Check '[' which indicate array index is incoming
+    if (Token.Str=="[")
+    {
+        NextToken;
+        // Node's value is PTR_ARRAY with left child the pointer variable ....
+        Node tmp = *nd;
+        CreateTree(nd->Right);
+        CreateTree(nd->Left);
+        *nd->Left = tmp;
+        nd->Value = "PTR_ARRAY";
+        nd->Attribs[0] = "";
+        // .... and right child the index expression
+        if (!IsNumber(ParseExpression(nd->Right,0)))
+            Error("Invalid array index", Token.LineStart, Token.Pos);
+        // Must be ended with ']'
+        if (Token.Str!="]")
+            Error("Expected ']'",Token.LineStart, Token.Pos);
+        NextToken;
         // And type of factor is the type pointed by the variable
         Type = GetPointedType(Type);
         nd->Attribs[2]=GetTypeName(Type);
         // If the pointed type is also a pointer, we can have another array index, parse it
-        if (IsPointer(Type))    Type = ParseArray(nd, Type);
+        if (IsPointer(Type))    Type = ParsePtrArray(nd, Type);
     }
     return Type;
 }
@@ -93,13 +165,18 @@ int ParseMember(Node* &nd, int Type)
                                                 //                                                       |
     // The right value is the member's name     //                                                       |
     nd->Right->Value = Token.Str;               //                                                       |
+    string mem = Token.Str;                     //                                                       |
+    NextToken;                                  //                                                       |
+    // Check for indices data                   //                                                       |
+    if (GetArrayIdCnt(tp)>0) tp = ParseArray(nd->Right, tp, 0);                     //          <<<<< ---|
+    if (IsPointer(tp))    tp = ParsePtrArray(nd->Right,tp);                         //          <<<<< ---|
                                                 //                                                       |
     // See if another member is incoming        //                                                       |
-    NextToken;                                  //                                                       |
+                                                //                                                       |
     if (Token.Str==".")                         //                                                       |
         tp = ParseMember(nd->Right,tp);         //                                              <<<<< ---|
                                                 //                                                       |
-    // The factor type is either the type of member or the type of member of member, stored in 'tp' in --^
+    // The factor type is either the type of member or the type of member of member, stored in 'tp' as --^
     nd->Attribs[2]=GetTypeName(tp);
     return tp;
 }
@@ -111,16 +188,22 @@ int ParseVarFactor(Node* &nd)
     if (!CheckVar(Token.Str))   Error("Invalid Variable Name", Token.LineStart, Token.Pos);
 
     // Id node's value is the variable's unique ID, factor type is variable's data type
-    nd->Value = GetVarId(Token.Str);
-    int Type = GetVarType(Token.Str);
+    string var = Token.Str;
+    nd->Value = GetVarId(var);
+    int Type = GetVarType(var);
     nd->Attribs[0]="VARIABLE";
     nd->Attribs[2]=GetTypeName(Type);
     NextToken;
+
+    // Variable might be an array
+    if (GetArrayIdCnt(Type)>0) Type = ParseArray(nd, Type, 0);
+
+    // A pointer type can also be followed by indices
+    if (IsPointer(Type))    Type = ParsePtrArray(nd,Type);
+
     // A '.' means a member is incoming
     if (Token.Str==".") Type = ParseMember(nd, Type);
 
-    // A pointer type can be followed by array index
-    if (IsPointer(Type))    Type = ParseArray(nd,Type);
     return Type;
 }
 
@@ -136,8 +219,8 @@ int ParseFactor(Node* &nd)
         NextToken;
 
         // AND a bracketed expression can also have a member or array index
+        if (IsPointer(Type))   Type=ParsePtrArray(nd,Type);
         if (Token.Str==".")    Type = ParseMember(nd, Type);
-        if (IsPointer(Type))   Type=ParseArray(nd,Type);
         return Type;
     }
 
@@ -204,7 +287,7 @@ int ParseFactor(Node* &nd)
         if (GetNoOfParam(nd->Value)!=0) ParseParameters(nd->Right, nd->Value,0);
         if (Token.Str!=")") Error("Expected ending paranthesis: )", Token.LineStart, Token.Pos);
         NextToken;
-        nd->Attribs[0] = "FUNCTION";
+        nd->Attribs[0] = "CALL_FACTOR";
         nd->Attribs[2] = GetTypeName(GetFuncType(nd->Value));
         return GetType(nd->Attribs[2]);
     }
@@ -284,7 +367,6 @@ int ParseExpression(Node* &nd, int PrecL)
         CreateTree(nd->Left);
         (*nd->Left) = tmp;
 
-        nd->Value = opr;
         nd->Attribs[0] = "OPERATOR";
         NextToken;
         // Right child node is the another expression of higher precedence level
@@ -307,7 +389,8 @@ int ParseExpression(Node* &nd, int PrecL)
             tk=tmpTK;
             break;
         }
-
+        //Get OprId
+        nd->Value = GetOprId(opr,LType,RType,PrecL);
         // Valid return type is the type of the expression
         nd->Attribs[2] = GetTypeName(RetType);
         LType = RetType;
@@ -352,6 +435,7 @@ void ParseAssign(Node* &nd)
             // Node's name is "DEREF" and previously parsed pointer variable is on the right child
             Node tmp = *(nd->Left);
             nd->Left->Value="DEREF";
+            nd->Left->Attribs[0]="";
             nd->Left->Attribs[2]=GetTypeName(Type);
             CreateTree(nd->Left->Right);
             *(nd->Left->Right)=tmp;
@@ -372,8 +456,8 @@ void ParseAssign(Node* &nd)
     int extp = ParseExpression(nd->Right, 0);
     // May not have reached end of line if wrong operator at the middle of the expression
     if (Token.Type!=EOL)    Error("Expected End Of Line", Token.LineStart, Token.Pos);
-    // Also check if types match between expression and assigment variable
-    if (!CheckTypes(extp, Type))
+    // Also check if expression type can be assigned to assignment type
+    if (!CheckAssgnTypes(Type, extp))
         Error("Assignment types mismatched", Token.LineStart);
 }
 
@@ -482,16 +566,8 @@ void ParseReturn(Node* &nd)
 }
 
 // Parse a variable declaration
-// Array dimensions can be declared only in local variables
-// Dimensions can be expressions
-// int a[2][3][b*c-d/4]
-// is same as
-// int *** a
-// but an array declarance makes sure that a, *a, **a all are initialized with memory, and
-// a[i], a[i][j] and a[i][j][k] point to proper places
-//
-// (For global variables and types members, they need to be initialized using a = new int[2][3][b*c-3/4]
-//  but this feature is not yet implemented)
+// There has been change about array dimensions
+// Arrays are no longer same as initialized pointers - they are now same as C/C++ arrays
 void ParseVarDecl(Node* &nd)
 {
     VarInfo var;
@@ -502,28 +578,10 @@ void ParseVarDecl(Node* &nd)
     CreateTree(nd);
     nd->Value="DECLARE";
 
-    // Time to parse the array info: [..][..]...
-    Node* _nd=nd;
-    while (Token.Str=="[")
-    {
-        // Parent's node's right child is ARRAY with it's left child expression to determine dimension
-        NextToken;
-        CreateTree(_nd->Right);
-        _nd->Right->Value="ARRAY";
-        if (!CheckTypes(ParseExpression(nd->Right->Left,0),GetType("INT")))
-            Error("Array dimensions must be integers", Token.LineStart,Token.Pos);
-        if (Token.Str!="]")
-            Error("Missing ']'",Token.LineStart,Token.Pos);
-        NextToken;
-        _nd = _nd->Right;
-
-        // Make sure the variable is now a pointer type
-        var.Type = SetPointerType(var.Type,1);
-    }
     // Add the variable to current scope
     AddVar(var);
     nd->Attribs[0]=GetVarId(var.Name);
-    nd->Attribs[1]=GetTypeName(var.Type);
+    nd->Attribs[2]=GetTypeName(var.Type);
 }
 
 // Check if a variable, that can be assigned to, is coming up
@@ -553,6 +611,7 @@ void ParseStatement(Node * &nd)
     else if (Token.Str=="RETURN")   ParseReturn(nd);
     else if (CheckType(Token.Str)) ParseVarDecl(nd);
     else if (CheckAssgnComing())   ParseAssign(nd);
+    else if (CheckFunction(Token.Str))  ParseCall(nd);
     else
         Error("Unknown Statement !!!", Token.LineStart);
 }
@@ -613,23 +672,42 @@ void ParseOprFunction(Node* &nd)
     }
     else RetType=ParseType();  // Return type is at the beginning if SERIES not defined
     nd->Value="OPR_FUNCTION";
-    nd->Attribs[0]=Token.Str;
-
+    string name = Token.Str;
     AddOprFuncToScope(Token.Str);
 
-    if (Series)     // For SERIES type, get the return type as follows
+    int LType, RType, PD;
+
+    while (Token.Str!="(")  NextToken;
+    NextToken;
+    LType = ParseType();
+    NextToken;
+    if (Token.Str!=")")
     {
-        while (Token.Str!="(")  NextToken;
         NextToken;
-        ParseType();
-        NextToken;
-        NextToken;
-        RetType=ParseType();
+        RType=ParseType();
     }
+    if (Series)
+        RetType=LType=RType=GetPointedType(RType);
 
     while (Token.Str!=")")  NextToken;
-    NextToken;  NextToken;
-    if (Token.Str=="PREUNARY" || Token.Str=="POSTUNARY")    NextToken;  // Skip these keywords
+    NextToken;
+    if (Token.Str=="PREUNARY")
+    {
+        PD = -1;
+        RType=LType;
+        LType=GetType("VOID");
+    }
+    else if (Token.Str=="POSTUNARY")
+    {
+        PD = -1;
+        RType=GetType("VOID");
+    }
+    else PD = ToNum(Token.Str);
+    NextToken;
+
+    nd->Attribs[0]=GetOprId(name,LType,RType,PD);
+
+    if (Token.Str=="COMMUTATIVE")   NextToken;
 
     NextStatement();
     if (Token.Str!="{") Error("Expected function block: '{...}'", Token.LineStart, Token.Pos);
@@ -646,10 +724,20 @@ void ParseTypeFunction(Node* &nd, int Type)
 {
     RetType=ParseType();
     nd->Value="TYPE_FUNCTION";
-    nd->Attribs[0]=Token.Str;
+    string fnc = Token.Str;
+    //nd->Attribs[0]=Token.Str;
     nd->Attribs[1]=GetTypeName(Type);
 
-    AddTypeFuncToScope(Type,Token.Str);
+    NextToken;
+    NextToken;
+    int tp = ParseType();
+
+    if (fnc=="DELETE")
+        nd->Attribs[0]=nd->Attribs[1]+"_DEL";
+    else
+        nd->Attribs[0]=GetNewTypeId(Type, tp);
+
+    AddTypeFuncToScope(Type,nd->Attribs[0]);
 
     while (Token.Str!=")")  NextToken;
     NextToken;

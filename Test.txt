@@ -1,49 +1,57 @@
-// Random example - don't do anything but is yet a valid zero-x++ program
+// Random example
 // Has been checked with 0x++ scanner and parser
 
-TYPE mystruc 
+Type string
 {
-mystruc new(mystruc* hi)
-{
-int c
-mystruc t
-return t
-}
-int mem1
-char *mem2
+    char* str
+    string New(string* s_new)
+    {
+        //we shall add code here later
+    }
+    string New(char** s_new)
+    {
+        //we shall add code here later
+    }
 }
 
-
-mystruc vow
 void main()
 {
-	mystruc how
-	int * a[2][3]
-	int ***b
-	b=a
-	how.mem1 = vow.mem1 + 2* **b[0]
-	
-	//how = how dog vow
-	how.mem1 = vow.mem1  +	vow bark
+    int a[2][3][4]
+    a[0][1][2] = 2*a[0][0][0]
 
-	how.mem1 = (how cat vow).mem2[0]
-	
-	return 
+    string mystr
+    mystr = "123"
+    mystr = "asb" + "dsd" + mystr
+    mystr = mystr + mystr
+
+    foo(a)
 }
 
-opr series dog (int c, mystruc* d) 4 
+void foo(int a[][3][4])
 {
-c=2-3--4
-
-return &vow
+    return
 }
 
-opr int bark(mystruc c) postunary 
+// A + operator for a series of strings
+opr series + (int n, string* strs) 4
 {
-return 2+3-6
+    // we shall add code here later
+}
+// A + operator for a series of char*'s : A string token "ASDFD 123" is also of type char*
+opr series + (int n, char** strs) 4
+{
+    // we shall add code here later
 }
 
-opr mystruc cat(mystruc c, mystruc d) 3
+// A + operator for LType string and RTpe char*
+opr string + (string s1, char* s2) 4
 {
-return vow
+    // we shall add code here later
+}
+// A + operator for RType string and LType char*
+opr string + (char* s1, string s2) 4
+{
+    // We don't need to rewrite the whole code for this one
+    // Just reuse above function:
+    return s2 + s1
 }

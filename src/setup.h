@@ -14,6 +14,7 @@ void Setup()
 {
     // Data Types
     TypeInfo tp;
+    tp.Del=false;
     tp.Name="INT"; tp.Size=4; Types.push_back(tp);
     tp.Name="CHAR"; tp.Size=1; Types.push_back(tp);
     tp.Name="FLOAT"; tp.Size=4; Types.push_back(tp);

@@ -7,6 +7,6 @@ void NextStatement();
 bool IncomingFunction();
 int SetPointerType(int Type, int nPtr);
 int ParseType();
-void ParseDeclare(VarInfo & var,string InType="");
+void ParseDeclare(VarInfo & var,string InType="", bool FuncParam=false);
 
 #endif // COMMON_H_INCLUDED

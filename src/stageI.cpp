@@ -50,9 +50,9 @@ void ParseTypeDecl()
         rec.push_back(var.Name);
 
         // Check if EOL, next declaration should be start at new line
-        if (Token.Type!=EOL)    Error("Expected End Of Line !!!", Token.LineStart);
+        if (Token.Type!=EOL)    Error("Expected End Of Line !!!", Token.LineStart, Token.Pos);
         // Skip EOL's
-        NextToken;  NextStatement();
+        NextStatement();
         // Also skip function if any is incoming
         while (IncomingFunction())   {SkipBlock(); NextToken;  NextStatement();}
 
@@ -62,6 +62,7 @@ void ParseTypeDecl()
         Type.Size += GetTypeSize(var.Type);
     } while (Token.Str!="}");
     // Oh, the vars list has been changed, don't forget to change it in the database
+    Type.Del=false;
     ChangeType(tp,Type);
     // Always end with one extra token ahead of the statement
     // where an EOL should be residing for a valid statement
@@ -120,7 +121,7 @@ FuncInfo ParseFuncDecl(bool oprFunc, bool TypeFunc)
     while (true)
     {
         VarInfo var;
-        ParseDeclare(var);
+        ParseDeclare(var, "", true);
         if (Token.Str!=")" && Token.Str!=",")   Error("Expected comma as parameters separator", Token.LineStart, Token.Pos);
 
         for (unsigned i=0;i<rec.size();i++)
@@ -183,6 +184,7 @@ void ParseOprFunction()
     // Now for the storage of operator information
     OprInfo opr;
     opr.Unary=Unary;
+    opr.Series=false;
     // SERIES operator needs first parameter to be INT type and second to be POINTER type
     if (func.Type==-1)
     {
@@ -191,6 +193,7 @@ void ParseOprFunction()
         if (!IsPointer(func.Params[1].Type))
             Error("Second parameter of series operator function must be of a pointer type", Token.LineStart);
         opr.RetType=opr.LType=opr.RType=GetPointedType(func.Params[1].Type);
+        opr.Series=true;
     }
     // PreUnary operators has LTYPE "VOID" and RTYPE the type of parameter/operand, RETTYPE is func.Type
     else if (Unary && Pre)
@@ -220,7 +223,7 @@ void ParseOprFunction()
 
     // Check for validity : if the operator with given LType, RType and Precedence Level has already been defined
     if (!CheckValidOpr(opr.Name,opr.LType,opr.RType,opr.Precedence))
-         Error("Invalid Operator Name", Token.LineStart);
+         Error("Invalid Operator Definition", Token.LineStart);
     // Add the operator to the database
     AddOpr(opr);
     // Skip the definition part
@@ -238,16 +241,34 @@ void ParseTypeFuncDecl(int Type)
     {
         if (!CheckTypes(func.Type,Type))
             Error("A type's NEW function must return same type", Token.LineStart);
-        if (func.Params.size()!=1 || !CheckTypes(func.Params[0].Type,PTRType))
-            Error("A type's NEW function must have parameter of pointer to same type", Token.LineStart);
+        if (func.Params.size()!=1 || !IsPointer(func.Params[0].Type))
+            Error("A type's NEW function must have only one parameter of a pointer type", Token.LineStart);
+
+        for (unsigned i=0;i<Types[Type].NewFuncs.size();i++)
+            if (CheckTypes(Types[Type].NewFuncs[i].Params[0].Type, func.Params[0].Type))
+                Error("A NEW function with this parameter is redefined!!!", Token.LineStart);
+
+        if (Types[Type].NewFuncs.size()==0)
+            if (func.Params.size()!=1 || !CheckTypes(func.Params[0].Type,PTRType))
+                Error("A type's first NEW function must have parameter of pointer to same type", Token.LineStart);
+
+        func.Id = Types[Type].Name+"_NEW";
+        string ex = "";
+        for (unsigned i=0;i<Types[Type].NewFuncs.size();i++)
+            ex+="_";
+        func.Id += ex;
+
         AddTypeNewFunc(Type,func);
     }
     else if (func.Name=="DELETE")
     {
-        if (GetTypeName(Type)!="VOID")
+        if (Types[Type].Del)
+            Error("A DELETE function is redefined!!!", Token.LineStart);
+        if (GetTypeName(func.Type)!="VOID")
             Error("A type's DELETE function must return VOID type", Token.LineStart);
         if (func.Params.size()!=1 || !CheckTypes(func.Params[0].Type,PTRType))
             Error("A type's DELETE function must have parameter of pointer to same type", Token.LineStart);
+        func.Id = Types[Type].Name + "_DEL";
         AddTypeDelFunc(Type,func);
     }
     else

@@ -67,6 +67,30 @@ bool IncomingFunction()
     tk=pTk; return false;
 }
 
+int SetArrayType(int Type, vector<int> & arrs, bool func)
+{
+    string arr="";
+    long unsigned sz=1;
+    for (unsigned i=0;i<arrs.size();i++)
+    {
+        if (func && i==0)   arr+="@P";
+        else arr+="@"+ToStr(arrs[i]);
+        sz *= arrs[i];
+    }
+
+    string name = arr+GetTypeName(Type);
+    if (!CheckType(name))
+    {
+        TypeInfo tp;
+        tp.Name=name;
+        tp.Size=sz;
+        tp.Del=false;
+        AddType(tp);
+    }
+
+    return GetType(name);
+}
+
 // Create a new pointer type for a given pointer, nPtr means depth of the pointer : no of *'s in the declaration
 // Don't create just return, if already created
 int SetPointerType(int Type, int nPtr)
@@ -79,6 +103,7 @@ int SetPointerType(int Type, int nPtr)
         TypeInfo tp;
         tp.Name=name;
         tp.Size=4;  // Every pointer type is 4 bytes in size
+        tp.Del=false;
         AddType(tp);    // Add it to the database
 
         // Note that every pointer can have the dereference operator : *
@@ -118,14 +143,16 @@ int ParseType()
     return Type;
 }
 // Parse a 'variable/type member/function parameter' declaration
-void ParseDeclare(VarInfo & var, string InType)
+void ParseDeclare(VarInfo & var, string InType, bool FuncParam)
 {
     // Check for valid type : if inside a type, only pointer to the InType is valid (can u guess why?)
-    if (!CheckType(Token.Str) || (InType==Token.Str && Tokens[tk+1].Str!="*"))
+    if (InType==Token.Str && Tokens[tk+1].Str!="*")
         Error("Invalid Type", Token.LineStart,Token.Pos);
     // Parse out the type
     int Type = ParseType();
-
+    // Also void var can't be declared
+    if (Type==GetType("VOID"))
+        Error("VOID Type isn't for variables", Token.LineStart,Token.Pos);
     // Check for validity in name
     if (Token.Type!=IDENTIFIER) Error("Invalid Name: " + Token.Str, Token.LineStart,Token.Pos);
     if (!CheckValidName(Token.Str)) Error("Invalid Name; Already in Used: " + Token.Str, Token.LineStart,Token.Pos);
@@ -136,7 +163,24 @@ void ParseDeclare(VarInfo & var, string InType)
     var.Name = Name;
     var.Type = Type;
 
-    ///////// In future, we will be adding code to parse array declarations here as well,
-    ///////// but as you shall see, we need to complete stageII before doing that
+    vector <int> arrs;
+    while (Token.Str=="[")
+    {
+        NextToken;
+        if (FuncParam && Token.Str=="]" && arrs.size()==0)
+            arrs.push_back(1);
+        else
+        {
+            if (Token.Type!=NUMBER || Token.Str.find('.')!=string::npos)
+                Error("Array dimension must be an INTEGER and can't be an expression", Token.LineStart, Token.Pos);
+            arrs.push_back(ToNum(Token.Str));
+            NextToken;
+        }
+        if (Token.Str!="]")
+            Error("Expected ']'", Token.LineStart, Token.Pos);
+        NextToken;
+    }
+    if (arrs.size()>0)
+        var.Type=SetArrayType(var.Type, arrs, FuncParam);
 
 }
