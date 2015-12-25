@@ -1,0 +1,47 @@
+// Random example - don't do anything but is yet a valid zero-x++ program
+// Has been checked with 0x++ scanner and parser
+
+TYPE mystruc 
+{
+mystruc new(mystruc* hi)
+{
+int c
+}
+int mem1
+char mem2[2]
+}
+
+
+mystruc vow
+void main()
+{
+	mystruc how
+	int * a[2][3]
+	int ***b
+	b=a
+	how.mem1 = vow.mem1 + 2* **b[0]
+	
+	//how = how dog vow
+	how.mem1 = vow.mem1 + vow bark
+
+	how.mem1 = (how cat vow).mem2[0]
+	
+	return 
+}
+
+opr series dog (int c, mystruc* d) 4 
+{
+c=2-3--4
+
+return &vow
+}
+
+opr int bark(mystruc c) postunary 
+{
+return 2+3-6
+}
+
+opr mystruc cat(mystruc c, mystruc d) 3
+{
+return vow
+}

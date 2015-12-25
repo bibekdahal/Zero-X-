@@ -1,0 +1,41 @@
+
+Zero-X++ - 1
+=====================================
+This version of 0x++ contains the scanner that can
+scan all the valid Zero-X++ tokens and display them.
+
+
+
+-------------------------------------
+Usage
+-------------------------------------
+1) To scan a file with zxp from command prompt, the syntax is
+	zxp  <filename>
+
+2) Or, you can double click zxp.exe and enter the file name
+
+-------------------------------------
+Valid Tokens
+-------------------------------------
+
+Identifier:
+	Anything starting with alphabet or an underscore, followed by alphabet, underscore and digit
+	E.g.: _ab, if, var, a20, AB__2dC
+
+Number:
+	A decimal or non-decimal number
+	E.g.: 12, 0.34, .2
+
+String:
+	Anything inside two double-quotation marks: "..."
+	E.g.: "Hey this is a string", "oh"
+
+Character:
+	A single character inside two single-quotation marks: '.'
+	E.g.: 'a', ' ', '2'
+
+Symbol:
+	E.g.: <, <=, >=, ==, !=, @, $, ., _, -, =
+
+End Of Line:
+	The '\n' character of C - marking the end of a line and end of a 0x++ statement
