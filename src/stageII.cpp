@@ -308,11 +308,13 @@ int ParseFactorEx(Node* &nd)
     {
         // Node's value is the operator, right child is another factor, return type is got from database
         CreateTree(nd);
-        nd->Value = Token.Str;
+        string opr = Token.Str;
         nd->Attribs[0] = "UNARY_OPERATOR";
         NextToken;
         int Type = ParseFactorEx(nd->Right);    //FactorEx again, since more PreUnary operators may exits: ***a
-        nd->Attribs[2] = GetTypeName(GetRetType(nd->Value, Type,true));
+
+        nd->Value = GetOprId(opr, GetType("VOID"), Type, -1);
+        nd->Attribs[2] = GetTypeName(GetRetType(opr, Type,true));
         return GetType(nd->Attribs[2]);
     }
 
@@ -329,10 +331,12 @@ int ParseFactorEx(Node* &nd)
         CreateTree(nd->Left);
         (*nd->Left) = tmp;
 
-        nd->Value = Token.Str;
+        string opr = Token.Str;
         nd->Attribs[0] = "UNARY_OPERATOR";
         NextToken;
-        int Type = GetRetType(nd->Value, GetType(nd->Left->Attribs[2]),false);
+
+        int Type = GetRetType(opr, GetType(nd->Left->Attribs[2]),false);
+        nd->Value = GetOprId(opr, Type, GetType("VOID"), -1);
         nd->Attribs[2] = GetTypeName(Type);
     }
     return GetType(nd->Attribs[2]);

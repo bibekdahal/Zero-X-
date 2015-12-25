@@ -212,9 +212,53 @@ void ParentScope();
 void AddFuncToScope(string Function);
 void AddOprFuncToScope(string Opr);
 void AddTypeFuncToScope(int Type, string FuncId);
-
+// Get the constructor NEW function of a type; return empty string "" if doesn't exist
+string GetCTor(int Type);
 
 int GetGreaterNumType(int Type1, int Type2);
+//*************************************************
+
+
+//***************** TRICODE ***********************
+struct tcode
+{
+    // Three address code / 3 address: a,b,c / 1 operation / Type
+    string Type;
+    string Opr;
+    string a;
+    string b;
+    string c;
+};
+
+struct tblock
+{
+    // A block of tcodes : so that each block can be optimised independently of other blocks
+    string Name;
+    string Type;
+    vector<tcode> tcodes;
+};
+// Add new block
+void NewBlock(string Name, string Type);
+// Add a code to current block
+void AddTCode(tcode Tcode);
+// Get a new temporary name
+string GetTmp();
+// Clear all temporary names
+void ResetTmp();
+// Add a temporary name
+void AddTmp(string tmp);
+
+// Add a ToSave temporary name
+void ToSave(string tmp);
+// Clear all ToSave temporary names
+void ClearSaved();
+// Save the ToSave temporary names
+void SaveAll();
+// Get all the saved temporary names
+void GetAll();
+
+// Get a new label name
+string GetLabel();
 //*************************************************
 
 
@@ -226,5 +270,6 @@ void PrintOutGlobals();
 void PrintOutFuncs();
 void PrintOutOprs();
 void PrintOutTree(Node * nd, string dash="");
+void PrintOutTCodes();
 //*************************************************
 #endif // DATA_H_INCLUDED

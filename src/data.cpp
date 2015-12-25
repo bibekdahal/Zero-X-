@@ -440,6 +440,13 @@ void AddTypeFuncToScope(int Type, string FuncId)
         }
     }
 }
+string GetCTor(int Type)
+{
+    int PTRType = SetPointerType(Type,1);
+    for (unsigned i=0;i<Types[Type].NewFuncs.size();i++)
+        if(CheckTypes(Types[Type].NewFuncs[i].Params[0].Type,PTRType))  return Types[Type].NewFuncs[i].Id;
+    return "";
+}
 
 int GetGreaterNumType(int Type1, int Type2)
 {
@@ -452,6 +459,71 @@ int GetGreaterNumType(int Type1, int Type2)
     return GetType("CHAR");
 }
 
+
+
+vector <tblock> tblocks;
+void NewBlock(string Name, string Type)
+{
+    ResetTmp();
+    tblock TB;
+    TB.Name = Name;
+    TB.Type = Type;
+    tblocks.push_back(TB);
+}
+void AddTCode(tcode Tcode)
+{
+    if (tblocks.size()==0)   return;
+    tblocks[tblocks.size()-1].tcodes.push_back(Tcode);
+}
+
+long tmp;
+vector <string> tmps;
+bool CheckTmp(string tmp)
+{
+    for (unsigned i=0;i<tmps.size();i++)
+        if (tmps[i]==tmp) return true;
+    return false;
+}
+string GetTmp()
+{
+    string str;
+    do
+    {
+        tmp++;
+        str = "TMP"+ToStr(tmp);
+    } while (CheckTmp(str));
+    tmps.push_back(str);
+    return str;
+}
+void ResetTmp()
+{
+    tmps.clear();
+    tmp=0;
+}
+void AddTmp(string tmp)
+{
+    if (tmp.substr(0,3)!="TMP") return;
+    if (CheckTmp(tmp))    return;
+    tmps.push_back(tmp);
+}
+
+vector <string> tosave;
+void ToSave(string tmp)
+{
+    if (tmp.substr(0,3)!="TMP") return;
+    tosave.push_back(tmp);
+}
+void ClearSaved()
+{
+    tosave.clear();
+}
+
+long lbl=0;
+string GetLabel()
+{
+    lbl++;
+    return "LABEL_"+ToStr(lbl);
+}
 
 
 
@@ -520,4 +592,58 @@ void PrintOutTree(Node * nd, string dash)
 
     PrintOutTree(nd->Left, dash+"-");
     PrintOutTree(nd->Right, dash+"-");
+}
+void TranslateTCode(tcode tc)
+{
+    if (tc.Type=="LABEL")   cout<<"\n\t\t";
+    else    cout<<"\n\t\t\t";
+    if (tc.Type=="ASSIGN")
+    {
+        if (tc.Opr=="COPY")
+            cout << tc.c << " = " << tc.a;
+        else if (tc.Opr=="COPY_ID_SRC")
+            cout << tc.c << " = " << tc.a + "["+tc.b+"]";
+        else if (tc.Opr=="COPY_ID_DEST")
+            cout << tc.c + "["+tc.b+"]" << " = " << tc.a;
+        else if (tc.Opr=="CALL")
+            cout << tc.c << " = " << "call " + tc.a + ", "+tc.b;
+        else
+            cout << tc.c << " = " << tc.a << " "+tc.Opr+" " << tc.b;
+    }
+    else if (tc.Type=="PUSH")
+        cout << "PUSH " << tc.a;
+    else if (tc.Type=="POP")
+        cout << "POP " << tc.c;
+    else if (tc.Type=="CALL")
+        cout << "call " << tc.a + ", " + tc.b;
+    else if (tc.Type=="ALLOCATE")
+        cout << "ALLOCATE " << tc.a << " bytes to " << tc.c;
+    else if (tc.Type=="DEALLOCATE")
+        cout << "DEALLOCATE " << tc.a;
+    else if (tc.Type=="RETURN")
+        cout << "RETURN " << tc.a;
+    else if (tc.Type=="JMP_IF_FALSE")
+        cout << "Goto " << tc.c << " if " << tc.a << " is false";
+    else if (tc.Type=="JMP")
+        cout << "Goto " << tc.c;
+    else if (tc.Type=="LABEL")
+        cout << tc.a << ":";
+    else if (tc.Type=="DECLARE")
+        cout << tc.b << " " << tc.a;
+}
+void PrintOutTCodes()
+{
+    for (unsigned i=0;i<tblocks.size();i++)
+    {
+        if (tblocks[i].Name=="NEW_BLOCK")
+            cout << "\n\t\t\t--------------------------------------";
+        else
+        {
+            cout << "\n\n\tFOUND TBLOCK: " << tblocks[i].Name;
+            cout << "\n\t\tType: " << tblocks[i].Type;
+        }
+
+        for (unsigned j=0; j<tblocks[i].tcodes.size();j++)
+            TranslateTCode(tblocks[i].tcodes[j]);
+    }
 }

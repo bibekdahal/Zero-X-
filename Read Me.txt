@@ -1,9 +1,9 @@
 
-Zero-X++ - 4
+Zero-X++ - 5
 =====================================
-This version of 0x++ contains the stage I & II of parser that can
-parse a valid 0x++ program as well as a simple optimizer that perform
-the calculations on numerical constants by the compiler itself
+This version of 0x++ generates 3-address code for a 0x++ program.
+However, it doesn't work for ARRAYS yet.
+Next version shall be complete with ARRAYS
 
 
 -------------------------------------

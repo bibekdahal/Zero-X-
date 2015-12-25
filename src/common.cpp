@@ -77,7 +77,7 @@ int SetArrayType(int Type, vector<int> & arrs, bool func)
         else arr+="@"+ToStr(arrs[i]);
         sz *= arrs[i];
     }
-
+    if (func)   sz=4;   //Array as parameters are pointers - size 4 bytes exact
     string name = arr+GetTypeName(Type);
     if (!CheckType(name))
     {

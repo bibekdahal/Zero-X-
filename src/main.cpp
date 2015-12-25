@@ -1,6 +1,7 @@
 #include "stdinc.h"
 #include "lex.h"
 #include "parser.h"
+#include "tricode.h"
 
 void Error(string err)
 {
@@ -56,6 +57,8 @@ bool IsStrNum(string str)
     while (it != str.end() && std::isdigit(*it)) ++it;
     return !str.empty() && it == str.end();
 }
+
+
 int main(int argc, char **argv)
 {
 
@@ -75,17 +78,22 @@ int main(int argc, char **argv)
     //Prepare the list of tokens and display them
     PrepareTokensList();                                                cout << ".";
     //Initialize the database
-    InitData();
+    InitData();                                                         cout << ".";
     //Parse the series of tokens
-    Parse();
+    Parse();                                                            cout << ".";
+    //Generate 3-address codes out of the parse tree
+    MakeTriCode(ParseTree);                                             cout << ".";
 
-    //Print out every thing we got by parsing
+
+    //Print out every thing we got
     PrintOutTypes();    cout<<"\n";
     PrintOutGlobals();  cout<<"\n";
     PrintOutFuncs();    cout<<"\n";
     PrintOutOprs();     cout<<"\n";
     cout<<"\n";
     PrintOutTree(ParseTree);
+    cout<<"\n";
+    PrintOutTCodes();
 
     //Deallocate the tree
     Deallocate();

@@ -248,9 +248,6 @@ void ParseTypeFuncDecl(int Type)
             if (CheckTypes(Types[Type].NewFuncs[i].Params[0].Type, func.Params[0].Type))
                 Error("A NEW function with this parameter is redefined!!!", Token.LineStart);
 
-        if (Types[Type].NewFuncs.size()==0)
-            if (func.Params.size()!=1 || !CheckTypes(func.Params[0].Type,PTRType))
-                Error("A type's first NEW function must have parameter of pointer to same type", Token.LineStart);
 
         func.Id = Types[Type].Name+"_NEW";
         string ex = "";

@@ -1,10 +1,57 @@
 // Random example
 // Has been checked with 0x++ scanner and parser
 
+Type string
+{
+    char* str
+    string New(string* s_new)
+    {
+        //we shall add code here later
+    }
+    string New(char** s_new)
+    {
+        //we shall add code here later
+    }
+}
+
 void main()
 {
-    int a
-    a = 'A' + 2 / 3     // returns 65
-    a = 'A' + 2.0 / 3   // returns 65.66667
+    int a[2][3][4]
+    a[0][1][2] = 2*a[0][0][0]
+
+    string mystr
+    mystr = "123"
+    mystr = "asb" + "dsd" + mystr
+    mystr = mystr + mystr
+
+    foo(a)
+}
+
+void foo(int a[][3][4])
+{
     return
+}
+
+// A + operator for a series of strings
+opr series + (int n, string* strs) 4
+{
+    // we shall add code here later
+}
+// A + operator for a series of char*'s : A string token "ASDFD 123" is also of type char*
+opr series + (int n, char** strs) 4
+{
+    // we shall add code here later
+}
+
+// A + operator for LType string and RTpe char*
+opr string + (string s1, char* s2) 4
+{
+    // we shall add code here later
+}
+// A + operator for RType string and LType char*
+opr string + (char* s1, string s2) 4
+{
+    // We don't need to rewrite the whole code for this one
+    // Just reuse above function:
+    return s2 + s1
 }
