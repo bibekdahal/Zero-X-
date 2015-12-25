@@ -162,9 +162,9 @@ int ParseMember(Node* &nd, int Type)
     NextToken;
     if (!CheckMember(Type, Token.Str))  Error("Invalid member", Token.LineStart, Token.Pos);
     int tp = GetMemberType(Type, Token.Str);    //                                              <<<<< ---|
-                                                //                                                       |
     // The right value is the member's name     //                                                       |
     nd->Right->Value = Token.Str;               //                                                       |
+    nd->Right->Attribs[2] = GetTypeName(tp);    //                                                       |
     string mem = Token.Str;                     //                                                       |
     NextToken;                                  //                                                       |
     // Check for indices data                   //                                                       |

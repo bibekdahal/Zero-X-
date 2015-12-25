@@ -64,6 +64,7 @@ void OptmConstExpr(Node* &nd)
         // In case of predefined numerical operators only
         if (IsPreNumber(nd))
         {
+
             // First change the type of the operator according to the types of children
             // GreaterNumType choses the proper type: for e.g.: in case of DOUBLE and INT, DOUBLE is chosen, whereas
             //                                                  in case of INT and CHAR, INT is chosen
@@ -86,6 +87,33 @@ void OptmConstExpr(Node* &nd)
             }
         }
     }
+
+    if (nd->Attribs[0]=="UNARY_OPERATOR" && IsPreNumber(nd) && nd->Value=="-")
+    {
+
+            // First change the type of the operator according to the types of children
+            // GreaterNumType choses the proper type: for e.g.: in case of DOUBLE and INT, DOUBLE is chosen, whereas
+            //                                                  in case of INT and CHAR, INT is chosen
+            nd->Attribs[2] = nd->Right->Attribs[2];
+
+            // If both children are constants
+            if (nd->Right->Attribs[0]=="VALUE")
+            {
+                // Calculate the node
+                string str = "-"+nd->Right->Value;
+                if (str!="")
+                {
+                    // Change the node's value (which is currently an operator) to the calculated value
+                    nd->Value=str;
+                    // Node's type is now VALUE (constant), not an operator
+                    nd->Attribs[0]="VALUE";
+                    // We no more need the children
+                    DeleteTree(nd->Left); DeleteTree(nd->Right);
+                }
+            }
+
+    }
+
 }
 
 void Parse()

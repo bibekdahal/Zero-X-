@@ -62,21 +62,18 @@ string GetVarFactor(Node* nd)
 {
     // Variable is returned as it is
     if (nd->Attribs[0]=="VARIABLE")
-        return nd->Value;
+        return nd->Value +"^"+nd->Attribs[2]+"^";
     // For &a, &a is returned
     else if (nd->Value=="PTR")
-        return "&"+nd->Right->Value;
-    // Values are also returned as it is
+        return "&"+nd->Right->Value +"^"+nd->Attribs[2]+"^";
+    // Values are also returned as it is, with an additional "~" at the beginning
     else if (nd->Attribs[0]=="VALUE")
-    {
-        if (nd->Attribs[2]=="CHAR*")    return "~" + nd->Value;
-        return nd->Value;
-    }
+        return "~" + nd->Value +"^"+nd->Attribs[2]+"^";
     // Array Parameter
     else if (nd->Attribs[0]=="ARR_PARAM_VAR")
     {
         // We have to pass the pointer to the array variable
-        return "&"+nd->Value;
+        return "&"+nd->Value +"^"+nd->Attribs[2]+"^";
     }
     //var.mem1.mem2
     else if (nd->Value=="MEMBER")
@@ -84,8 +81,8 @@ string GetVarFactor(Node* nd)
         string var = GetExpr(nd->Left);
         string id=ToStr(GetOffset(GetType(nd->Left->Attribs[2]), nd->Right));
         string tmp = GetTmp();
-        CopyOffSrc(tmp,var, id);
-        return tmp;
+        CopyOffSrc(tmp+"^"+nd->Attribs[2]+"^",var, id);
+        return tmp+"^"+nd->Attribs[2]+"^";
     }
     // Pointer indices
     else if (nd->Value=="PTR_ARRAY")
@@ -106,7 +103,7 @@ string GetVarFactor(Node* nd)
         }
         // tmp1 = var[tmp]
         // return tmp1
-        string tmp1 = GetTmp();
+        string tmp1 = GetTmp()+"^"+nd->Attribs[2]+"^";
         CopyIdSrc(tmp1,var, tmp);
         return tmp1;
     }
@@ -178,11 +175,11 @@ string GetVarFactor(Node* nd)
             AddTriCode("ASSIGN", "*", id, ToStr((long)GetTypeSize(GetType(nd->Attribs[2]))),idt);
         }
         // Then use that address with the offset to get to the required data
-        string tmp = GetTmp();
+        string tmp = GetTmp() + "^"+nd->Attribs[2]+"^";
         // An array as parameter is pointer to array and uses index
         // while normal array variable uses offset
-        if (_nd->Left->Attribs[1]=="PARAM") {CopyIdSrc(tmp, _nd->Left->Value, idt);}
-        else    {CopyOffSrc(tmp, _nd->Left->Value, idt);}
+        if (_nd->Left->Attribs[1]=="PARAM") {CopyIdSrc(tmp, _nd->Left->Value + "^"+_nd->Left->Attribs[2]+"^", idt+"^"+nd->Attribs[2]+"^");}
+        else    {CopyOffSrc(tmp, _nd->Left->Value + "^"+_nd->Left->Attribs[2]+"^", idt+"^"+nd->Attribs[2]+"^");}
         return tmp;
     }
     // ****a
@@ -193,18 +190,18 @@ string GetVarFactor(Node* nd)
         string id = "0";
         // NewTmp = var[0]
         // return NewTmp
-        string tmp = GetTmp();
+        string tmp = GetTmp() + "^"+nd->Attribs[2]+"^";
         CopyIdSrc(tmp,var, id);
         return tmp;
     }
     // Calling a function in parameter
-    else if (nd->Attribs[0]=="FUNCTION")
+    else if (nd->Attribs[0]=="CALL_FACTOR")
     {
         // Pass the parameters
         PassParams(nd->Right);
         // NewTmp = func(parameters)
         // return NewTmp
-        string tmp = GetTmp();
+        string tmp = GetTmp() + "^"+nd->Attribs[2]+"^";
         SaveAll();
             CopyCall(tmp,nd->Value, ToStr((long)GetParamSize(nd->Value)));
         GetAll();
@@ -284,7 +281,7 @@ string GetExpr(Node* nd)
             // return NewTmp
             string var = GetExpr(nd->Right);
             string id = "0";
-            string tmp = GetTmp();
+            string tmp = GetTmp() + "^"+GetTypeName(GetPointedType(GetType(nd->Right->Attribs[2])))+"^";
             CopyIdSrc(tmp,var, id);
             return tmp;
         }
@@ -300,7 +297,7 @@ string GetExpr(Node* nd)
             // NewTmp = src1 opr src2
             // return NewTmp
             string opr = nd->Value;
-            string tmp = GetTmp();
+            string tmp = GetTmp() + "^"+nd->Attribs[2]+"^";
             Assign(tmp, src1, opr, src2);
             return tmp;
         }
@@ -329,7 +326,7 @@ string GetExpr(Node* nd)
 
                 // NewTmp = opr_func(LExpr, RExpr)
                 // return NewTmp
-                string tmp = GetTmp();
+                string tmp = GetTmp() + "^"+nd->Attribs[2]+"^";
                 SaveAll();
                     CopyCall(tmp,nd->Value, ToStr(N));
                 GetAll();
@@ -353,7 +350,7 @@ string GetExpr(Node* nd)
                 Push(ToStr(N));
                 // Tmp = opr_func(N, stmp)
                 // return Tmp
-                string tmp = GetTmp();
+                string tmp = GetTmp() + "^"+nd->Attribs[2]+"^";
                 SaveAll();
                     CopyCall(tmp,nd->Value, "8");
                 GetAll();
@@ -372,15 +369,15 @@ void AsgnTo(Node* nd, tcode &tc)
     if (nd->Attribs[0]=="VARIABLE")
     {
         // The variable is itself is to be assigned to
-        tc.c = nd->Value;
+        tc.c = nd->Value +"^"+nd->Attribs[2]+"^";
         // And the operation is simple COPY
         tc.Opr="COPY";
     }
     else if (nd->Value=="MEMBER")
     {
         // var.m1.m2 = ...
-        tc.c = nd->Left->Value;
-        tc.b = ToStr(GetOffset(GetType(nd->Left->Attribs[2]), nd->Right));
+        tc.c = GetVarFactor(nd->Left);
+        tc.b = ToStr(GetOffset(GetType(nd->Left->Attribs[2]), nd->Right)) +"^"+nd->Attribs[2]+"^";
         // tc.c contains variable to be assigned to and tc.b contains the offset to reach the member
         // Since the destination variable is using an offset, COPY_OFF_DEST is used
         tc.Opr="COPY_OFF_DEST";
@@ -466,8 +463,8 @@ void AsgnTo(Node* nd, tcode &tc)
             AddTriCode("ASSIGN", "*", id, ToStr((long)GetTypeSize(GetType(nd->Attribs[2]))),idt);
         }
 
-        tc.c = _nd->Left->Value;
-        tc.b = idt;
+        tc.c = _nd->Left->Value + "^"+_nd->Left->Attribs[2]+"^";
+        tc.b = idt + "^"+nd->Attribs[2]+"^";
         if (_nd->Left->Attribs[1]=="PARAM") tc.Opr = "COPY_ID_DEST";
         else tc.Opr = "COPY_OFF_DEST";
     }
