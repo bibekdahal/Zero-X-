@@ -126,6 +126,7 @@ FuncInfo ParseFuncDecl(bool oprFunc, bool TypeFunc)
 
         for (unsigned i=0;i<rec.size();i++)
             if (rec[i]==var.Name) Error("Already got this parameter", Token.LineStart, Token.Pos);
+        var.Param = true;
         rec.push_back(var.Name);
         func.Params.push_back(var);
         func.ParamSize += GetTypeSize(var.Type);

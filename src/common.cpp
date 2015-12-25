@@ -162,6 +162,7 @@ void ParseDeclare(VarInfo & var, string InType, bool FuncParam)
     // Set the varinfo
     var.Name = Name;
     var.Type = Type;
+    var.Param = false;
 
     vector <int> arrs;
     while (Token.Str=="[")

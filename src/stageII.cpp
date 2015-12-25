@@ -193,6 +193,7 @@ int ParseVarFactor(Node* &nd)
     int Type = GetVarType(var);
     nd->Attribs[0]="VARIABLE";
     nd->Attribs[2]=GetTypeName(Type);
+    if (CheckParam(var))   nd->Attribs[1]="PARAM";
     NextToken;
 
     // Variable might be an array
@@ -439,7 +440,7 @@ void ParseAssign(Node* &nd)
             // Node's name is "DEREF" and previously parsed pointer variable is on the right child
             Node tmp = *(nd->Left);
             nd->Left->Value="DEREF";
-            nd->Left->Attribs[0]="";
+            nd->Left->Attribs[1]=nd->Left->Attribs[0]="";
             nd->Left->Attribs[2]=GetTypeName(Type);
             CreateTree(nd->Left->Right);
             *(nd->Left->Right)=tmp;

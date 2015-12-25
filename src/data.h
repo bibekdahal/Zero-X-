@@ -64,6 +64,7 @@ struct VarInfo
 {
     string Name;
     int Type;               //The type is a number : the index of the type in 'Types' vector
+    bool Param;     //Is a Parameter?
     string Id;              //Unique name for each variable // an underscore ( _ ) is added for every new scope
 };
 // Functions have name, type and parameters
@@ -145,6 +146,8 @@ int GetPointedType(int Type);
 int GetArrType(int Type);
 // Get the number of dimensions of array type
 int GetArrayIdCnt(int Type);
+// Get the size of dm-th dimension of the array type
+long GetDimSize(string Type, int dm);
 
 // Check if an identifier is valid for variable/function/type name
 bool CheckValidName(string Name);
@@ -157,6 +160,8 @@ bool CheckVar(string Name);
 int GetVarType(string Name, Scope* scope = CurrentScope);
 // Get the ID of a variable
 string GetVarId(string Name, Scope* scope=CurrentScope);
+// Check if a variable name is actually a parameter
+bool CheckParam(string Name);
 
 // Check if a function is already defined
 bool CheckFunction(string Name);

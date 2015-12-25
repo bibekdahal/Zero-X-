@@ -125,6 +125,27 @@ int GetArrayIdCnt(int Type)
     return cnt;
 }
 
+long GetDimSize(string Type, int dm)
+{
+    size_t found;
+    int cnt=1;
+    found = Type.find('@');
+    while (dm!=cnt)
+    {
+        cnt++;
+        found = Type.find('@', found+1);
+    }
+    found += 1;
+    string sz = "";
+    sz += Type[found];
+    while (isdigit(Type[found+1]))
+    {
+        found += 1;
+        sz += Type[found];
+    }
+    return ToNum(sz);
+}
+
 bool CheckVarInScope(string Name, Scope *scope)
 {
     for (unsigned i=0;i<scope->Vars.size();i++)
@@ -180,6 +201,12 @@ string GetVarId(string Name, Scope* scope)
         if (scope->Vars[i].Name==Name) return scope->Vars[i].Id;
     if (scope->Parent)  return GetVarId(Name, scope->Parent);
     return "";
+}
+bool CheckParam(string Name)
+{
+    for (unsigned i=0;i<CurrentScope->Vars.size();i++)
+        if (CurrentScope->Vars[i].Name==Name) return CurrentScope->Vars[i].Param;
+    return false;
 }
 
 bool CheckFunction(string Name)
@@ -490,7 +517,7 @@ string GetTmp()
     do
     {
         tmp++;
-        str = "TMP"+ToStr(tmp);
+        str = "$"+ToStr(tmp);
     } while (CheckTmp(str));
     tmps.push_back(str);
     return str;
@@ -502,7 +529,7 @@ void ResetTmp()
 }
 void AddTmp(string tmp)
 {
-    if (tmp.substr(0,3)!="TMP") return;
+    if (tmp.substr(0,1)!="$") return;
     if (CheckTmp(tmp))    return;
     tmps.push_back(tmp);
 }
@@ -605,6 +632,10 @@ void TranslateTCode(tcode tc)
             cout << tc.c << " = " << tc.a + "["+tc.b+"]";
         else if (tc.Opr=="COPY_ID_DEST")
             cout << tc.c + "["+tc.b+"]" << " = " << tc.a;
+        else if (tc.Opr=="COPY_OFF_SRC")
+            cout << tc.c << " = " << "[" + tc.a + "+"+tc.b+"]";
+        else if (tc.Opr=="COPY_OFF_DEST")
+            cout << "[" + tc.c + "+"+tc.b+"]" << " = " << tc.a;
         else if (tc.Opr=="CALL")
             cout << tc.c << " = " << "call " + tc.a + ", "+tc.b;
         else

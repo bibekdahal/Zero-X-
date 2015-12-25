@@ -68,14 +68,23 @@ string GetVarFactor(Node* nd)
         return "&"+nd->Right->Value;
     // Values are also returned as it is
     else if (nd->Attribs[0]=="VALUE")
+    {
+        if (nd->Attribs[2]=="CHAR*")    return "~" + nd->Value;
         return nd->Value;
-    //var.mem1.mem2 - better see the tutorial post at learntocompile.blospot.com
+    }
+    // Array Parameter
+    else if (nd->Attribs[0]=="ARR_PARAM_VAR")
+    {
+        // We have to pass the pointer to the array variable
+        return "&"+nd->Value;
+    }
+    //var.mem1.mem2
     else if (nd->Value=="MEMBER")
     {
         string var = GetExpr(nd->Left);
         string id=ToStr(GetOffset(GetType(nd->Left->Attribs[2]), nd->Right));
         string tmp = GetTmp();
-        CopyIdSrc(tmp,var, id);
+        CopyOffSrc(tmp,var, id);
         return tmp;
     }
     // Pointer indices
@@ -87,11 +96,93 @@ string GetVarFactor(Node* nd)
             string id = GetExpr(nd->Right);
         ClearSaved();
         // Multiply the indices with the type size to get true offest in bytes
+        string tmp;
+        if (IsStrNum(id))
+            tmp = ToStr((int)(ToNum(id) * GetTypeSize(GetType(nd->Attribs[2]))));
+        else
+        {
+            tmp = GetTmp();
+            AddTriCode("ASSIGN", "*", id, ToStr((long)GetTypeSize(GetType(nd->Attribs[2]))),tmp);
+        }
+        // tmp1 = var[tmp]
+        // return tmp1
+        string tmp1 = GetTmp();
+        CopyIdSrc(tmp1,var, tmp);
+        return tmp1;
+    }
+    // Array Indices
+    else if (nd->Value=="ARRAY")
+    {
+        // The top of ARRAY tree has right child as the last index : for a[i1][i2][i3], the topmost right child is i3
+        string id = GetExpr(nd->Right);
+
+        // Find out the type of the array variable, the type lies at the "bottommost" left child of the array node
+        Node* _nd = nd;
+        // Get to the bottommost Array node
+        while(_nd->Left->Value=="ARRAY")
+            _nd=_nd->Left;
+        // Get the type from the left child
+        string arrtp = _nd->Left->Attribs[2];
+
+        _nd = nd;
+        // Get the no. of dimensions
+        int i=GetArrayIdCnt(GetType(arrtp));
+        long dsz=1;
+        // To get the total offset from indices: a[i1][i2][i3] where size of each dimension is D1, D2, D3
+        // offset = i3 + i2*D3 + i1*D2*D3
+        // Note that the first dimension (D1) is never used
+        // We already got the 'i3'
+        // Note that 'i' is the current dimension we are working at
+        //      for 3 dimensions, 'i' is currently set to '3'
+        // Get remaining indices
+        while (_nd->Left->Value=="ARRAY")
+        {
+            // Get the i-th dimension size and multiply it with previous dimension sizes
+            //          Why? Check the formula - for i2 we multiply by D3, for i1, we have to multiply by D2*D3
+            dsz *= GetDimSize(arrtp, i);
+            // We have to work on next dimension now, decrement 'i'
+            i--;
+            _nd = _nd->Left;
+            // Get the next index
+            ToSave(id);
+                string idd = GetExpr(_nd->Right);
+            ClearSaved();
+            // Multiply the index with 'dsz'
+            if (IsStrNum(idd))  idd = ToStr((long)ToNum(idd) * dsz);
+            else
+            {
+                string tmp = GetTmp();
+                AddTriCode("ASSIGN","*", idd, ToStr(dsz), tmp);
+                idd = tmp;
+            }
+
+            // Add to get updated offset, stored in 'id'
+            // i.e. (i2) + (i1*D2)
+            if (IsStrNum(id) && IsStrNum(idd))
+                id = ToStr((long) (ToNum(idd)+ToNum(id)));
+            else
+            {
+                string tmp = GetTmp();
+                AddTriCode("ASSIGN","+", id, idd, tmp);
+                id = tmp;
+            }
+        }
+
+        // idt is total offset, we get by multiplying above offset (id) with type size
+        string idt;
+        if (IsStrNum(id))
+            idt = ToStr((int)(ToNum(id) * GetTypeSize(GetType(nd->Attribs[2]))));
+        else
+        {
+            idt = GetTmp();
+            AddTriCode("ASSIGN", "*", id, ToStr((long)GetTypeSize(GetType(nd->Attribs[2]))),idt);
+        }
+        // Then use that address with the offset to get to the required data
         string tmp = GetTmp();
-        AddTriCode("ASSIGN", "*", id, ToStr((long)GetTypeSize(GetType(nd->Attribs[2]))),tmp);
-        // tmp = var[tmp]
-        // return tmp
-        CopyIdSrc(tmp,var, tmp);
+        // An array as parameter is pointer to array and uses index
+        // while normal array variable uses offset
+        if (_nd->Left->Attribs[1]=="PARAM") {CopyIdSrc(tmp, _nd->Left->Value, idt);}
+        else    {CopyOffSrc(tmp, _nd->Left->Value, idt);}
         return tmp;
     }
     // ****a
@@ -288,32 +379,97 @@ void AsgnTo(Node* nd, tcode &tc)
     else if (nd->Value=="MEMBER")
     {
         // var.m1.m2 = ...
-        // see the tutorial post on learntocompile.blospot.com to understand how members are handled
         tc.c = nd->Left->Value;
         tc.b = ToStr(GetOffset(GetType(nd->Left->Attribs[2]), nd->Right));
-        // tc.c contains variable to be assigned to and tc.b contains the index defining the member
-        // Since the destination variable is using an index, COPY_ID_DEST is used
-        tc.Opr="COPY_ID_DEST";
+        // tc.c contains variable to be assigned to and tc.b contains the offset to reach the member
+        // Since the destination variable is using an offset, COPY_OFF_DEST is used
+        tc.Opr="COPY_OFF_DEST";
     }
     else if (nd->Value=="PTR_ARRAY")
     {
         // For pointer indices
         // Get the variable to be assigned to
-        tc.c = GetVarFactor(nd->Left);
+        string var = GetVarFactor(nd->Left);
         // Get the index
-        string id = GetExpr(nd->Right);
-        // Get a tmp
-        string tmp = GetTmp();
+        ToSave(var);
+            string id = GetExpr(nd->Right);
+        ClearSaved();
+
+        string tmp;
         // Multiply the ID with the size of the type and store in tmp
         // That's because for int * a
         // a[0] is at 0*4=0 position
         // a[1] is at 1*4=4 position
         // ... since each data occupies 4 bytes as integer
-        AddTriCode("ASSIGN", "*", id, ToStr((long)GetTypeSize(GetType(nd->Attribs[2]))),tmp);
+        if (IsStrNum(id))
+            tmp = ToStr((int)(ToNum(id) * GetTypeSize(GetType(nd->Attribs[2]))));
+        else
+        {
+            tmp = GetTmp();
+            AddTriCode("ASSIGN", "*", id, ToStr((long)GetTypeSize(GetType(nd->Attribs[2]))),tmp);
+        }
+        // The var pointing destination to copy to
+        tc.c = var;
         // The id of where to copy is tmp
         tc.b = tmp;
         // Copy to destination variable with index
         tc.Opr="COPY_ID_DEST";
+    }
+    else if (nd->Value=="ARRAY")
+    {
+        // Plz check out corresponding code in GetVarFactor for the commented part of this code
+        string id = GetExpr(nd->Right);
+
+        Node* _nd = nd;
+        while(_nd->Left->Value=="ARRAY")
+            _nd=_nd->Left;
+        string arrtp = _nd->Left->Attribs[2];
+
+        _nd = nd;
+        int i=GetArrayIdCnt(GetType(arrtp));
+        long dsz=1;
+
+        while (_nd->Left->Value=="ARRAY")
+        {
+            dsz *= GetDimSize(arrtp, i);
+            i--;
+            _nd = _nd->Left;
+
+            ToSave(id);
+                string idd = GetExpr(_nd->Right);
+            ClearSaved();
+
+            if (IsStrNum(idd))  idd = ToStr((long)ToNum(idd) * dsz);
+            else
+            {
+                string tmp = GetTmp();
+                AddTriCode("ASSIGN","*", idd, ToStr(dsz), tmp);
+                idd = tmp;
+            }
+
+            if (IsStrNum(id) && IsStrNum(idd))
+                id = ToStr((long) (ToNum(idd)+ToNum(id)));
+            else
+            {
+                string tmp = GetTmp();
+                AddTriCode("ASSIGN","+", id, idd, tmp);
+                id = tmp;
+            }
+        }
+
+        string idt;
+        if (IsStrNum(id))
+            idt = ToStr((int)(ToNum(id) * GetTypeSize(GetType(nd->Attribs[2]))));
+        else
+        {
+            idt = GetTmp();
+            AddTriCode("ASSIGN", "*", id, ToStr((long)GetTypeSize(GetType(nd->Attribs[2]))),idt);
+        }
+
+        tc.c = _nd->Left->Value;
+        tc.b = idt;
+        if (_nd->Left->Attribs[1]=="PARAM") tc.Opr = "COPY_ID_DEST";
+        else tc.Opr = "COPY_OFF_DEST";
     }
     else if (nd->Value=="DEREF")
     {

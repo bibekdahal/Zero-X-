@@ -1,9 +1,8 @@
 
-Zero-X++ - 5
+Zero-X++ - 6
 =====================================
 This version of 0x++ generates 3-address code for a 0x++ program.
-However, it doesn't work for ARRAYS yet.
-Next version shall be complete with ARRAYS
+It includes working version of ARRAYS as well.
 
 
 -------------------------------------

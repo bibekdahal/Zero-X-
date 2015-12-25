@@ -16,6 +16,8 @@ void MakeTriCode(Node* nd);
 #define Copy(dest, src) AddTriCode("ASSIGN", "COPY", src, "", dest);
 #define CopyIdSrc(dest, src, id)  AddTriCode("ASSIGN", "COPY_ID_SRC", src, id, dest);
 #define CopyIdDest(dest, src, id)  AddTriCode("ASSIGN", "COPY_ID_DEST", src, id, dest);
+#define CopyOffSrc(dest, src, offset)  AddTriCode("ASSIGN", "COPY_OFF_SRC", src, offset, dest);
+#define CopyOffDest(dest, src, offset)  AddTriCode("ASSIGN", "COPY_OFF_DEST", src, offset, dest);
 #define Push(src)  AddTriCode("PUSH", "", src, "", "");
 #define Pop(dest)  AddTriCode("POP", "", "", "", dest);
 #define Return(a)   AddTriCode("RETURN", "", a, "", "");
