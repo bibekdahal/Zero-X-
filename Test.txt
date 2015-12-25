@@ -8,7 +8,7 @@ mystruc new(mystruc* hi)
 int c
 }
 int mem1
-char mem2[2]
+char mem2
 }
 
 
@@ -16,15 +16,14 @@ mystruc vow
 void main()
 {
 	mystruc how
-	int * a[2][3]
 	int ***b
 	b=a
-	how.mem1 = vow.mem1 + 2* **b[0]
+	how.mem1 = vow.mem1 + 2* ***b
 	
 	//how = how dog vow
 	how.mem1 = vow.mem1 + vow bark
 
-	how.mem1 = (how cat vow).mem2[0]
+	how.mem1 = (how cat vow).mem2
 	
 	return 
 }

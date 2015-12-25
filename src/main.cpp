@@ -1,7 +1,7 @@
 #include "stdinc.h"
 #include "lex.h"
+#include "stageI.h"
 
-// 'Display error' functions
 void Error(string err)
 {
     cout << "Error:\n\t";
@@ -26,22 +26,32 @@ void Error(string err, long unsigned LineStart, long Pos)
     exit(-1);
 
 }
-
-// 'Str<-->Num' functions
-string ToStr(long unsigned Num)
+string ToStr(double Num)
 {
     char buffer[20];
-    sprintf(buffer, "%lu",Num);
+    snprintf(buffer, sizeof(buffer), "%f",Num);
     return buffer;
 }
-int ToInt(string str)
+string ToStr(int Num)
 {
-    return atoi(str.c_str());
+    char buffer[20];
+    snprintf(buffer, sizeof(buffer), "%d",Num);
+    return buffer;
+}
+string ToStr(long Num)
+{
+    char buffer[20];
+    snprintf(buffer, sizeof(buffer), "%ld",Num);
+    return buffer;
+}
+double ToNum(string str)
+{
+    return atof(str.c_str());
 }
 
-// The MAIN function
 int main(int argc, char **argv)
 {
+
     // Ask for filename if not supplied as argument
     string FileName;
     if (argc != 2){
@@ -51,16 +61,36 @@ int main(int argc, char **argv)
     }
     else
         FileName = argv[1];
-
     // Display message that compilation is going on and open the file
     cout << "Compiling file: " << FileName << "\n";
     OpenProgram(FileName);
                                                                         cout << ".";
     //Prepare the list of tokens and display them
     PrepareTokensList();                                                cout << ".";
-    PrintOutTokens();
+    //Initialize the database
+    InitData();
+    // Parse out the declarations, in 3 passes
+    tk=0;
+    ParseTypesDecl();
+    tk=0;
+    ParseGlobalVarsDecl();
+    tk=0;
+    ParseFuncsDecl();
+    // make sure VOID MAIN() is defined
+    bool GotMain=false;
+    if (CheckFunction("MAIN"))
+        if (GetFuncType("MAIN")==GetType("VOID"))
+            if (GetNoOfParam("MAIN")==0)    GotMain = true;
+    if (!GotMain) Error("Must have a \"void main()\" function");
+
+    //Print out every thing we got by parsing
+    PrintOutTypes();    cout<<"\n";
+    PrintOutGlobals();  cout<<"\n";
+    PrintOutFuncs();    cout<<"\n";
+    PrintOutOprs();     cout<<"\n";
 
     cout << "\nDone!!!";
+
     getchar();
     return 0;
 }

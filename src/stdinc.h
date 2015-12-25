@@ -8,11 +8,10 @@
 // and at pos 'Pos' in that line
 void Error(string err, long unsigned LineStart, long Pos=-1);
 void Error(string err);
-
-// Change a integer into string
-string ToStr(long unsigned Num);
-
-// Change a string into integer
-int ToInt(string str);
+// Str<->Num functions
+string ToStr(double Num);
+string ToStr(int Num);
+string ToStr(long Num);
+double ToNum(string str);
 
 #endif // STDINC_H_INCLUDED

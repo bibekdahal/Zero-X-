@@ -1,41 +1,57 @@
 
-Zero-X++ - 1
+Zero-X++ - 2
 =====================================
-This version of 0x++ contains the scanner that can
-scan all the valid Zero-X++ tokens and display them.
+This version of 0x++ contains the stage I of parser that can
+parse and get all information about declarations of global
+variables, types, functions and operator functions in 0x++.
 
 
 
 -------------------------------------
 Usage
 -------------------------------------
-1) To scan a file with zxp from command prompt, the syntax is
+1) To parse a file with zxp from command prompt, the syntax is
 	zxp  <filename>
 
 2) Or, you can double click zxp.exe and enter the file name
 
 -------------------------------------
-Valid Tokens
+Syntax
 -------------------------------------
+Var-Decl:
+type name
 
-Identifier:
-	Anything starting with alphabet or an underscore, followed by alphabet, underscore and digit
-	E.g.: _ab, if, var, a20, AB__2dC
+Type-Decl:
+TYPE name
+{
+     type1 mem1
+     type2 mem2
+     ...
+}
 
-Number:
-	A decimal or non-decimal number
-	E.g.: 12, 0.34, .2
+Func-Decl:
+type name ( type1 param1, type2 param2, ...)
+{...}
 
-String:
-	Anything inside two double-quotation marks: "..."
-	E.g.: "Hey this is a string", "oh"
+Type-Func-Decl:
+TYPE mytype
+{
+     ...
+     mytype NEW (mytype * ntype)
+     {...}
+     void DELETE (mytype * dtype)
+     {...}
+}
 
-Character:
-	A single character inside two single-quotation marks: '.'
-	E.g.: 'a', ' ', '2'
+Opr-Func-Decl:
+-Syntax-1:
+OPR ret_type opr_name (type1 LType, type2 RType) pd
+{...}
 
-Symbol:
-	E.g.: <, <=, >=, ==, !=, @, $, ., _, -, =
+-Syntax2:
+OPR SERIES opr_name ( int N, type* Type) pd
+{...}
 
-End Of Line:
-	The '\n' character of C - marking the end of a line and end of a 0x++ statement
+-Syntax-3:
+OPR ret_type opr_name (type1 LType, type2 RType) PreUnary/PostUnary
+{...}
