@@ -2,6 +2,5 @@
 #define STAGEI_H_INCLUDED
 
 void ParseTypesDecl();
-void ParseGlobalVarsDecl();
-void ParseFuncsDecl();
+void ParseFuncsGlobalsDecl();
 #endif // STAGEI_H_INCLUDED

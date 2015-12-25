@@ -1,10 +1,8 @@
 
-Zero-X++ - 2
+Zero-X++ - 3
 =====================================
-This version of 0x++ contains the stage I of parser that can
-parse and get all information about declarations of global
-variables, types, functions and operator functions in 0x++.
-
+This version of 0x++ contains the stage I & II of parser that can
+parse a valid 0x++ program.
 
 
 -------------------------------------
@@ -15,43 +13,8 @@ Usage
 
 2) Or, you can double click zxp.exe and enter the file name
 
--------------------------------------
-Syntax
--------------------------------------
-Var-Decl:
-type name
+------------------------------------
 
-Type-Decl:
-TYPE name
-{
-     type1 mem1
-     type2 mem2
-     ...
-}
+Haven't checked this one properly, so for bugs, contact 
 
-Func-Decl:
-type name ( type1 param1, type2 param2, ...)
-{...}
-
-Type-Func-Decl:
-TYPE mytype
-{
-     ...
-     mytype NEW (mytype * ntype)
-     {...}
-     void DELETE (mytype * dtype)
-     {...}
-}
-
-Opr-Func-Decl:
--Syntax-1:
-OPR ret_type opr_name (type1 LType, type2 RType) pd
-{...}
-
--Syntax2:
-OPR SERIES opr_name ( int N, type* Type) pd
-{...}
-
--Syntax-3:
-OPR ret_type opr_name (type1 LType, type2 RType) PreUnary/PostUnary
-{...}
+learntocompiler.blogspot.com

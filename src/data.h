@@ -45,14 +45,25 @@ extern unsigned long tk;
 //*************************************************
 
 
+//**************** ParseTree **********************
+struct Node
+{
+    string Value;
+    string Attribs[3];
+    Node * Left, * Right;
+};
+void CreateTree(Node*& pt);
+void DeleteTree(Node*& pt);
+extern Node* ParseTree;
+//*************************************************
+
 //**************** DataBase ***********************
 // All variables has got a name and a type
 struct VarInfo
 {
     string Name;
-    int Type;   //The type is a number : the index of the type in 'Types' vector
-
-    string Id;  //Unique name for each variable // an underscore ( _ ) is added for every new scope
+    int Type;               //The type is a number : the index of the type in 'Types' vector
+    string Id;              //Unique name for each variable // an underscore ( _ ) is added for every new scope
 };
 // Functions have name, type and parameters
 struct FuncInfo
@@ -62,6 +73,8 @@ struct FuncInfo
     unsigned long ParamSize;    //The total size of parameters in bytes can be useful
     vector<VarInfo> Params;
 };
+extern int RetType;     // Return type of function we are currently parsing
+
 // Types have name, members, a NEW function and a DELETE function
 struct TypeInfo
 {
@@ -192,9 +205,12 @@ void AddTypeFuncToScope(int Type, string Function);
 
 
 //****************** MISC *************************
+void Deallocate();
+
 void PrintOutTypes();
 void PrintOutGlobals();
 void PrintOutFuncs();
 void PrintOutOprs();
+void PrintOutTree(Node * nd, string dash="");
 //*************************************************
 #endif // DATA_H_INCLUDED

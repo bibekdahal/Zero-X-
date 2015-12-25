@@ -84,26 +84,6 @@ void ParseTypesDecl()
     }
 }
 
-// Get the global variable declarations
-void ParseGlobalVarsDecl()
-{
-    for (ln=0;ln<lines;ln++)
-    {
-        if (Token.Type!=EOL)
-        {
-            if (Token.Str=="TYPE" || Token.Str=="OPR"|| IncomingFunction())  SkipBlock();
-            else if (!CheckType(Token.Str)) SkipLine();
-            else    // For anything that starts with a valid data type name: int a // where int is valid type name
-            {
-                VarInfo var;    // Use ParseDeclare to parse the variable declaration
-                ParseDeclare(var);
-                AddVar(var);    // And add the variable to the database
-            }
-        }
-        if (Token.Type!=EOL)    Error("Expected End Of Line !!!", Token.LineStart);
-        NextToken;
-    }
-}
 
 // Gets a function declaration with the parameters
 // oprFunc is set true for OPERATOR function
@@ -277,7 +257,7 @@ void ParseTypeFuncDecl(int Type)
 }
 
 // Parse out all types of functions
-void ParseFuncsDecl()
+void ParseFuncsGlobalsDecl()
 {
     // If inside a type, this variable will contain the type name
     string InType = "";
@@ -286,7 +266,6 @@ void ParseFuncsDecl()
         if (Token.Type!=EOL)
         {
             if (Token.Str=="TYPE")  {NextToken;InType=Token.Str;}   // Got inside a type, set InType
-            if (Token.Str=="}" && InType!="") InType="";    // Got out of a type, reset InType
 
             if (Token.Str=="OPR") ParseOprFunction();   // An operator function, parse the declaration
             else if (IncomingFunction())    // Else a function is incoming
@@ -295,8 +274,22 @@ void ParseFuncsDecl()
                 if (InType!="") ParseTypeFuncDecl(GetType(InType));
                 else ParseFunction();
             }
-            // skip any other statement
-            else SkipLine();
+            else if (CheckType(Token.Str) && InType=="")
+            // For anything else that starts with a valid data type name: int a // where int is valid type name
+            {
+                VarInfo var;    // Use ParseDeclare to parse the variable declaration
+                ParseDeclare(var);
+                AddVar(var);    // And add the variable to the database
+            }
+            else if (Token.Str=="}" && InType!="")
+            {
+                InType="";    // Got out of a type, reset InType
+                NextToken;
+            }
+            else if (InType!="")
+                SkipLine();     // Anything inside Type declaration is already parsed, skip lines
+            else
+                Error("Invalid global statement",Token.LineStart);
         }
         if (Token.Type!=EOL)    Error("Expected End Of Line !!!", Token.LineStart);
         NextToken;

@@ -4,11 +4,30 @@
 
 unsigned long tk;
 
+void DeleteTree(Node*& pt)
+{
+    if (!pt) return;
+    DeleteTree(pt->Left);
+    DeleteTree(pt->Right);
+    delete pt;
+    pt=0;
+}
+void CreateTree(Node*& pt)
+{
+    pt = new Node();
+    pt->Value="";
+    pt->Attribs[0]=pt->Attribs[1]=pt->Attribs[2]="";
+    pt->Left=pt->Right=0;
+}
+
+Node* ParseTree=0;
+
 Scope GlobalScope;
 Scope* CurrentScope;
 
 vector<TypeInfo> Types;
 vector<FuncInfo> Funcs;
+int RetType = -1;
 vector<OprInfo> Oprs;
 
 #include "setup.h"
@@ -63,7 +82,7 @@ bool CheckVarInScope(string Name, Scope *scope)
 bool CheckReserved(string Name)
 {
     if (Name=="NEW" || Name=="DELETE" || Name=="IF" || Name=="ELSE"
-         || Name=="WHILE" || Name=="RETURN")
+         || Name=="WHILE" || Name=="RETURN" || Name=="TYPE")
         return true;
     return false;
 }
@@ -320,7 +339,10 @@ void NewScope()
 {
     Scope * scope = new Scope;
     scope->Parent = CurrentScope;
-    scope->Id = scope->Parent->Id + "_";
+    string id="";
+    for (unsigned i=0;i<scope->Parent->Children.size();i++)
+        id=id+"_";
+    scope->Id = scope->Parent->Id + id;
     CurrentScope->Children.push_back(scope);
     CurrentScope = scope;
 }
@@ -367,6 +389,11 @@ void AddTypeFuncToScope(int Type, string Function)
 
 
 
+void Deallocate()
+{
+    DeleteTree(ParseTree);
+
+}
 
 void PrintOutTypes()
 {
@@ -412,5 +439,19 @@ void PrintOutOprs()
         cout << "\n\t\tRType:"+GetTypeName(Oprs[i].RType);
         cout << "\n\t\tPrecedence:"+ToStr(Oprs[i].Precedence);
     }
+}
+void PrintOutTree(Node * nd, string dash)
+{
+    if (!nd)    return;
+
+    cout << "\n" << dash+"-> " << nd->Value;
+    string Atrbs="";
+    if (nd->Attribs[0]!="") Atrbs += "  "+nd->Attribs[0];
+    if (nd->Attribs[1]!="") Atrbs += "  "+nd->Attribs[1];
+    if (nd->Attribs[2]!="") Atrbs += "  "+nd->Attribs[2];
+    if (Atrbs!="") cout << "\tAttributes:" << Atrbs;
+
+    PrintOutTree(nd->Left, dash+"-");
+    PrintOutTree(nd->Right, dash+"-");
 }
 

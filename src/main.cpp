@@ -1,11 +1,12 @@
 #include "stdinc.h"
 #include "lex.h"
-#include "stageI.h"
+#include "parser.h"
 
 void Error(string err)
 {
     cout << "Error:\n\t";
     cout << err << "\n\t\t";
+    Deallocate();
     getchar();
     exit(-1);
 }
@@ -22,6 +23,7 @@ void Error(string err, long unsigned LineStart, long Pos)
         cout<<"^";
     }
     cout << "\nLine Number:" << ln+1;
+    Deallocate();
     getchar();
     exit(-1);
 
@@ -69,26 +71,19 @@ int main(int argc, char **argv)
     PrepareTokensList();                                                cout << ".";
     //Initialize the database
     InitData();
-    // Parse out the declarations, in 3 passes
-    tk=0;
-    ParseTypesDecl();
-    tk=0;
-    ParseGlobalVarsDecl();
-    tk=0;
-    ParseFuncsDecl();
-    // make sure VOID MAIN() is defined
-    bool GotMain=false;
-    if (CheckFunction("MAIN"))
-        if (GetFuncType("MAIN")==GetType("VOID"))
-            if (GetNoOfParam("MAIN")==0)    GotMain = true;
-    if (!GotMain) Error("Must have a \"void main()\" function");
+    //Parse the series of tokens
+    Parse();
 
     //Print out every thing we got by parsing
     PrintOutTypes();    cout<<"\n";
     PrintOutGlobals();  cout<<"\n";
     PrintOutFuncs();    cout<<"\n";
     PrintOutOprs();     cout<<"\n";
+    cout<<"\n";
+    PrintOutTree(ParseTree);
 
+    //Deallocate the tree
+    Deallocate();
     cout << "\nDone!!!";
 
     getchar();
